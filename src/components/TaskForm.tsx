@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useDispatch } from 'react-redux';
 import { addTask } from '../redux/taskSlice';
+import { useForm, zodResolver } from '@mantine/form';
+import { TextInput, Textarea, Button, Group } from '@mantine/core';
 import { z } from 'zod';
 
 // Görev formu için Zod şeması
@@ -9,55 +11,50 @@ const taskSchema = z.object({
   description: z.string().optional(),
 });
 
-const TaskForm: React.FC = () => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [errors, setErrors] = useState<{ title?: string }>({});
+interface TaskFormProps {
+  closeModal: () => void;
+}
+
+const TaskForm: React.FC<TaskFormProps> = ({ closeModal }) => {
   const dispatch = useDispatch();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Mantine formunu oluşturma
+  const form = useForm({
+    initialValues: {
+      title: '',
+      description: '',
+    },
+    validate: zodResolver(taskSchema),
+  });
 
-    // Form verilerini doğrulama
-    const result = taskSchema.safeParse({ title, description });
-
-    if (!result.success) {
-      // Hata mesajlarını ayıklama
-      const formErrors = result.error.format();
-      setErrors({
-        title: formErrors.title?._errors[0],
-      });
-      return;
-    }
-
+  const handleSubmit = (values: { title: string; description?: string }) => {
     // Yeni görev oluşturma ve Redux store'a ekleme
-    dispatch(addTask({ id: Date.now(), title, description, completed: false }));
-
+    dispatch(addTask({ id: Date.now(), ...values, completed: false }));
     // Formu temizleme
-    setTitle('');
-    setDescription('');
-    setErrors({});
+    form.reset();
+    // Modalı kapatma
+    closeModal();
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={form.onSubmit(handleSubmit)}>
       {/* Görev başlığı girişi */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
+      <TextInput
+        label="Task Title"
         placeholder="Task Title"
-        required
+        {...form.getInputProps('title')}
       />
-      {errors.title && <span style={{ color: 'red' }}>{errors.title}</span>}
       {/* Görev açıklaması girişi */}
-      <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Task Description (Optional)"
+      <Textarea
+        label="Task Description (Optional)"
+        placeholder="Task Description"
+        mt="md"
+        {...form.getInputProps('description')}
       />
       {/* Görev ekleme butonu */}
-      <button type="submit">Add Task</button>
+      <Group justify="flex-end" mt="md">
+        <Button type="submit">Add Task</Button>
+      </Group>
     </form>
   );
 };
