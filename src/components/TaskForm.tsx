@@ -1,11 +1,11 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
-import { addTask } from '../redux/taskSlice';
+import { addTask, editTask } from '../redux/taskSlice';
 import { useForm, zodResolver } from '@mantine/form';
 import { TextInput, Textarea, Button, Group } from '@mantine/core';
 import { z } from 'zod';
 
-// Görev formu için Zod şeması
+// Görev formu için Zod doğrulama şeması
 const taskSchema = z.object({
   title: z.string().min(1, 'Task title is required'),
   description: z.string().optional(),
@@ -13,27 +13,32 @@ const taskSchema = z.object({
 
 interface TaskFormProps {
   closeModal: () => void;
+  task?: { id: number; title: string; description?: string };
 }
 
-const TaskForm: React.FC<TaskFormProps> = ({ closeModal }) => {
+const TaskForm: React.FC<TaskFormProps> = ({ closeModal, task }) => {
   const dispatch = useDispatch();
 
-  // Mantine formunu oluşturma
+  // Form yönetimi ve doğrulama için Mantine useForm hook'u
   const form = useForm({
     initialValues: {
-      title: '',
-      description: '',
+      title: task?.title || '',
+      description: task?.description || '',
     },
     validate: zodResolver(taskSchema),
   });
 
+  // Form gönderildiğinde çalışacak fonksiyon
   const handleSubmit = (values: { title: string; description?: string }) => {
-    // Yeni görev oluşturma ve Redux store'a ekleme
-    dispatch(addTask({ id: Date.now(), ...values, completed: false }));
-    // Formu temizleme
-    form.reset();
-    // Modalı kapatma
-    closeModal();
+    if (task) {
+      // Mevcut görevi düzenleme
+      dispatch(editTask({ id: task.id, ...values }));
+    } else {
+      // Yeni görev ekleme
+      dispatch(addTask({ id: Date.now(), ...values, completed: false }));
+    }
+    form.reset(); // Formu temizleme
+    closeModal(); // Modalı kapatma
   };
 
   return (
@@ -51,9 +56,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ closeModal }) => {
         mt="md"
         {...form.getInputProps('description')}
       />
-      {/* Görev ekleme butonu */}
-      <Group justify="flex-end" mt="md">
-        <Button type="submit">Add Task</Button>
+      {/* Görev ekleme/düzenleme butonu */}
+      <Group justify="right" mt="md">
+        <Button type="submit">{task ? 'Edit Task' : 'Add Task'}</Button>
       </Group>
     </form>
   );
